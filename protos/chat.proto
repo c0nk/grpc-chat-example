@@ -8,9 +8,8 @@ package chat;
 
 service Chat {
   rpc PostMessage (PostMessageRequest) returns (PostMessageResponse) {}
-
   // Real time messaging API.
-  rpc RTM (RTMRequest) returns (stream Message) {}
+  rpc StartRTM (StartRTMRequest) returns (stream Message) {}
 }
 
 message Message {
@@ -29,5 +28,5 @@ message PostMessageResponse {
   Message message = 1;
 }
 
-message RTMRequest {
+message StartRTMRequest {
 }
