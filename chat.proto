@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "local.chat";
+option java_outer_classname = "ChatProto";
+
+package chat;
+
+service Chat {
+  rpc History () returns (HistoryResponse) {}
+  rpc PostMessage (PostMessageRequest) returns (PostMessageResponse) {}
+
+  // Real time messaging API.
+  rpc RTM(stream Message) returns (stream Message) {}
+}
+
+message Message {
+  string type = 1;
+  double ts = 2;
+  string user = 3;
+  string text = 4;
+}
+
+message HistoryResponse {
+  repeated Message messages = 1;
+}
+
+message PostMessageRequest {
+  string user = 1;
+  string text = 2;
+}
+
+message PostMessageResponse {
+  Message message = 1;
+}
