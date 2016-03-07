@@ -25,7 +25,20 @@ public:
   }
 
   void Run() {
-    StartRTM();
+//    StartRTM();
+
+    std::shared_ptr<grpc::ClientReader<chat::Message>> rtm_stream;
+      {
+        std::chrono::system_clock::time_point deadline =
+            std::chrono::system_clock::now() + std::chrono::seconds(10);
+
+        grpc::ClientContext context;
+        context.set_deadline(deadline);
+
+        chat::StartRTMRequest request;
+        rtm_stream.reset(stub_->StartRTM(&context, request).release());
+        rtm_stream->WaitForInitialMetadata();
+      }
 
     for (;;) {
       int count;
@@ -55,6 +68,10 @@ public:
         rtm_thread_->join();
         return;
       }
+
+      chat::Message message;
+      if (rtm_stream->Read(&message))
+        std::cout << "[" << message.user() << "]:" << message.text() << "\n";
     }
   }
 
