@@ -66,17 +66,14 @@ public:
     context.set_deadline(deadline);
 
     chat::StartRTMRequest request;
-    std::unique_ptr<grpc::ClientReader<chat::Message>> stream(
+    std::shared_ptr<grpc::ClientReader<chat::Message>> stream(
         stub_->StartRTM(&context, request));
 
-    rtm_thread_.reset(new std::thread([stream = std::move(stream)] {
+    rtm_thread_.reset(new std::thread([stream] {
+      stream->WaitForInitialMetadata();
       chat::Message message;
       while (stream->Read(&message))
         std::cout << "[" << message.user() << "]:" << message.text() << "\n";
-
-      grpc::Status status = stream->Finish();
-      if (!status.ok())
-        std::cerr << "RTM rpc read error." << std::endl;
     }));
   }
 
@@ -87,6 +84,7 @@ private:
   std::unique_ptr<chat::Chat::Stub> stub_;
   std::string user_;
   std::unique_ptr<std::thread> rtm_thread_;
+  std::shared_ptr<grpc::ClientReader<chat::Message>> rtm_stream_;
 };
 
 int main(int argc, char** argv) {

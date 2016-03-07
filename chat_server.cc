@@ -15,6 +15,7 @@ public:
   grpc::Status PostMessage(grpc::ServerContext *context,
                            const chat::PostMessageRequest *request,
                            chat::PostMessageResponse *response) override {
+    std::cout << "PM: " << request->user() << ">" << request->text() << std::endl;
     auto message = std::make_shared<chat::Message>();
     message->set_user(request->user());
     message->set_text(request->text());
