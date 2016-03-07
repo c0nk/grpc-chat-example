@@ -25,20 +25,7 @@ public:
   }
 
   void Run() {
-//    StartRTM();
-
-    std::shared_ptr<grpc::ClientReader<chat::Message>> rtm_stream;
-      {
-        std::chrono::system_clock::time_point deadline =
-            std::chrono::system_clock::now() + std::chrono::seconds(10);
-
-        grpc::ClientContext context;
-        context.set_deadline(deadline);
-
-        chat::StartRTMRequest request;
-        rtm_stream.reset(stub_->StartRTM(&context, request).release());
-        rtm_stream->WaitForInitialMetadata();
-      }
+    StartRTM();
 
     for (;;) {
       int count;
@@ -62,35 +49,28 @@ public:
       request.set_user(user_);
       request.set_text(std::move(input));
 
-      grpc::Status status = stub_->PostMessage(&context, request, nullptr);
+      chat::PostMessageResponse response;
+
+      grpc::Status status = stub_->PostMessage(&context, request, &response);
       if (!status.ok()) {
         std::cerr << "PostMessage rpc failed." << std::endl;
         rtm_thread_->join();
         return;
       }
-
-      chat::Message message;
-      if (rtm_stream->Read(&message))
-        std::cout << "[" << message.user() << "]:" << message.text() << "\n";
     }
   }
 
   void StartRTM() {
-    std::chrono::system_clock::time_point deadline =
-        std::chrono::system_clock::now() + std::chrono::seconds(10);
+    rtm_thread_.reset(new std::thread([=] {
+      grpc::ClientContext context;
 
-    grpc::ClientContext context;
-    context.set_deadline(deadline);
+      chat::StartRTMRequest request;
+      std::unique_ptr<grpc::ClientReader<chat::Message>> stream(
+          stub_->StartRTM(&context, request));
 
-    chat::StartRTMRequest request;
-    std::shared_ptr<grpc::ClientReader<chat::Message>> stream(
-        stub_->StartRTM(&context, request));
-
-    rtm_thread_.reset(new std::thread([stream] {
-      stream->WaitForInitialMetadata();
       chat::Message message;
       while (stream->Read(&message))
-        std::cout << "[" << message.user() << "]:" << message.text() << "\n";
+        std::cout << "[" << message.user() << "]: " << message.text() << "\n";
     }));
   }
 
@@ -101,7 +81,7 @@ private:
   std::unique_ptr<chat::Chat::Stub> stub_;
   std::string user_;
   std::unique_ptr<std::thread> rtm_thread_;
-  std::shared_ptr<grpc::ClientReader<chat::Message>> rtm_stream_;
+  std::unique_ptr<grpc::ClientContext> rtm_context_;
 };
 
 int main(int argc, char** argv) {
