@@ -36,12 +36,14 @@ LDFLAGS += -L/usr/local/lib -ledit -lgrpc++_unsecure -lgrpc -lprotobuf -lpthread
 PROTOC ?= protoc
 GRPC_CPP_PLUGIN ?= grpc_cpp_plugin
 GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`
+GRPC_PYTHON_PLUGIN ?= grpc_python_plugin
+GRPC_PYTHON_PLUGIN_PATH ?= `which $(GRPC_PYTHON_PLUGIN)`
 
 PROTOS_PATH = protos
 
 vpath %.proto $(PROTOS_PATH)
 
-all: system-check chat_client chat_server
+all: system-check chat_client chat_server chat_py
 
 chat_client: chat.pb.o chat.grpc.pb.o chat_client.o
 	$(CXX) $^ $(LDFLAGS) -o $@
@@ -49,11 +51,16 @@ chat_client: chat.pb.o chat.grpc.pb.o chat_client.o
 chat_server: chat.pb.o chat.grpc.pb.o chat_server.o
 	$(CXX) $^ $(LDFLAGS) -o $@
 
+chat_py: chat_pb2.py
+
 %.grpc.pb.cc: %.proto
 	$(PROTOC) -I $(PROTOS_PATH) --grpc_out=. --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN_PATH) $<
 
 %.pb.cc: %.proto
 	$(PROTOC) -I $(PROTOS_PATH) --cpp_out=. $<
+
+%_pb2.py: %.proto
+	$(PROTOC) -I $(PROTOS_PATH) --python_out=. --grpc_out=. --plugin=protoc-gen-grpc=$(GRPC_PYTHON_PLUGIN_PATH) $<
 
 clean:
 	rm -f *.o *.pb.cc *.pb.h chat_client chat_server
